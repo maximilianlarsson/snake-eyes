@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Snake Eyes</title>
+  <style>
+    :root{
+      --bg:#0b1020;
+      --panel:#121a33;
+      --panel2:#0f1730;
+      --text:#eef2ff;
+      --muted:#aab2e6;
+      --accent:#6ea8fe;
+      --good:#35d07f;
+      --warn:#ffcc66;
+      --bad:#ff6b6b;
+      --border:rgba(255,255,255,.12);
+      --shadow:0 12px 32px rgba(0,0,0,.35);
+    }
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    body{
+      margin:0;
+      padding:16px;
+      font-family:-apple-system,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(1000px 600px at 15% 10%, rgba(110,168,254,.18), transparent 55%),
+        radial-gradient(900px 700px at 85% 20%, rgba(53,208,127,.12), transparent 55%),
+        radial-gradient(900px 700px at 50% 100%, rgba(255,204,102,.10), transparent 55%),
+        var(--bg);
+      min-height:100vh;
+      overflow-x:hidden;
+    }
+    .wrap{max-width:1050px;margin:0 auto}
+    .top{
+      display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;
+      margin-bottom:14px;
+    }
+    h1{margin:0;font-size:30px}
+    .sub{color:var(--muted);font-size:13px;margin-top:4px}
+    .grid{display:grid;grid-template-columns:1.15fr .85fr;gap:16px}
+    @media (max-width: 880px){ .grid{grid-template-columns:1fr} }
+    .card{
+      background:linear-gradient(180deg, rgba(255,255,255,.04), transparent 70%), var(--panel);
+      border:1px solid var(--border);
+      border-radius:18px;
+      padding:16px;
+      box-shadow:var(--shadow);
+    }
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .pill{
+      border:1px solid var(--border);
+      background:rgba(0,0,0,.18);
+      border-radius:999px;
+      padding:8px 12px;
+      color:var(--muted);
+      font-size:13px;
+    }
+    .pill b{color:var(--text)}
+    textarea{
+      width:100%;
+      min-height:110px;
+      padding:12px;
+      border-radius:14px;
+      border:1px solid var(--border);
+      background:rgba(0,0,0,.2);
+      color:var(--text);
+      font:inherit;
+      font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
+      white-space:pre-wrap;
+    }
+    button{
+      appearance:none;
+      border:1px solid var(--border);
+      background:rgba(255,255,255,.08);
+      color:var(--text);
+      border-radius:14px;
+      padding:12px 14px;
+      font-weight:800;
+      cursor:pointer;
+      transition:transform .08s ease, background .18s ease, border-color .18s ease;
+    }
+    button:hover{background:rgba(255,255,255,.12)}
+    button:active{transform:translateY(1px)}
+    button:disabled{opacity:.5;cursor:not-allowed;transform:none}
+    .primary{background:rgba(110,168,254,.20);border-color:rgba(110,168,254,.38)}
+    .good{background:rgba(53,208,127,.18);border-color:rgba(53,208,127,.35)}
+    .status{
+      margin-top:14px;
+      min-height:48px;
+      border-radius:14px;
+      border:1px dashed rgba(255,255,255,.16);
+      background:rgba(0,0,0,.16);
+      padding:12px;
+      color:var(--muted);
+      line-height:1.4;
+    }
+    .status .ok{color:var(--good);font-weight:800}
+    .status .warn{color:var(--warn);font-weight:800}
+    .status .bad{color:var(--bad);font-weight:900}
+    .status b{color:var(--text)}
+    .scene{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:16px;
+      margin-top:16px;
+    }
+    @media (max-width:560px){ .scene{gap:10px} }
+    .die-wrap{
+      display:flex;justify-content:center;align-items:center;
+      min-height:170px;
+    }
+    .die2d{
+      position:relative;
+      width:94px;height:94px;
+      border-radius:18px;
+      background:linear-gradient(145deg,#fafcff,#dce5ff);
+      border:2px solid rgba(0,0,0,.12);
+      box-shadow:
+        inset 0 -8px 14px rgba(0,0,0,.08),
+        inset 0 8px 14px rgba(255,255,255,.45),
+        0 18px 22px rgba(0,0,0,.28);
+      display:grid;
+      grid-template-columns:1fr 1fr 1fr;
+      grid-template-rows:1fr 1fr 1fr;
+      place-items:center;
+      padding:12px;
+      transition:transform .12s ease;
+    }
+    .die2d.rolling{
+      animation:shake2d .8s cubic-bezier(.17,.84,.44,1);
+    }
+    @keyframes shake2d{
+      0%{transform:translateY(0) rotate(0deg) scale(1)}
+      12%{transform:translateY(-8px) rotate(-12deg) scale(1.02)}
+      24%{transform:translateY(2px) rotate(10deg) scale(.99)}
+      36%{transform:translateY(-6px) rotate(-9deg) scale(1.03)}
+      48%{transform:translateY(0) rotate(8deg) scale(1)}
+      60%{transform:translateY(-4px) rotate(-6deg) scale(1.02)}
+      72%{transform:translateY(2px) rotate(5deg) scale(1)}
+      84%{transform:translateY(-2px) rotate(-2deg) scale(1.01)}
+      100%{transform:translateY(0) rotate(0deg) scale(1)}
+    }
+    .pip{
+      width:14px;height:14px;border-radius:50%;
+      background:#15203e;
+      box-shadow:inset 0 1px 2px rgba(255,255,255,.15), 0 1px 1px rgba(0,0,0,.15);
+      opacity:0;
+    }
+    .v1 .p5,
+    .v2 .p1,.v2 .p9,
+    .v3 .p1,.v3 .p5,.v3 .p9,
+    .v4 .p1,.v4 .p3,.v4 .p7,.v4 .p9,
+    .v5 .p1,.v5 .p3,.v5 .p5,.v5 .p7,.v5 .p9,
+    .v6 .p1,.v6 .p3,.v6 .p4,.v6 .p6,.v6 .p7,.v6 .p9{opacity:1}
+    .hud{
+      display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px
+    }
+    .players{display:grid;gap:10px}
+    .player{
+      display:flex;justify-content:space-between;align-items:center;gap:12px;
+      padding:12px;border-radius:14px;border:1px solid var(--border);background:rgba(0,0,0,.14);
+    }
+    .player.active{
+      border-color:rgba(110,168,254,.45);
+      background:rgba(110,168,254,.10);
+      box-shadow:0 0 0 1px rgba(110,168,254,.18) inset;
+    }
+    .player b{display:block}
+    .small{font-size:12px;color:var(--muted)}
+    .score{
+      font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
+      font-size:20px;font-weight:900
+    }
+    .rules{color:var(--muted);font-size:13px;line-height:1.45}
+    .rules ul{margin:8px 0 0 18px;padding:0}
+    .rules li{margin:5px 0}
+    .snake-flash{
+      position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+      pointer-events:none;opacity:0;z-index:9999;
+      background:radial-gradient(circle at center, rgba(255,90,90,.18), rgba(0,0,0,.0) 45%);
+    }
+    .snake-flash.show{animation:flashSnake 1.2s ease forwards}
+    .snake-emoji{
+      font-size:min(34vw,240px);
+      filter:drop-shadow(0 10px 25px rgba(0,0,0,.38));
+      transform:scale(.3) rotate(-15deg);
+    }
+    .snake-flash.show .snake-emoji{animation:popSnake 1.2s ease forwards}
+    @keyframes flashSnake{
+      0%{opacity:0}
+      10%{opacity:1}
+      70%{opacity:1}
+      100%{opacity:0}
+    }
+    @keyframes popSnake{
+      0%{transform:scale(.2) rotate(-24deg)}
+      18%{transform:scale(1.15) rotate(8deg)}
+      42%{transform:scale(.92) rotate(-6deg)}
+      70%{transform:scale(1.02) rotate(4deg)}
+      100%{transform:scale(.9) rotate(0deg)}
+    }
+  </style>
+</head>
+<body>
+  <div class="snake-flash" id="snakeFlash" aria-hidden="true">
+    <div class="snake-emoji">🐍</div>
+  </div>
+
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <h1>Snake Eyes</h1>
+        <div class="sub">All the polished 3D-version styling, with reliable 2D dice.</div>
+      </div>
+      <div class="row">
+        <span class="pill">Target: <b>100</b></span>
+        <span class="pill">Sound: <b id="soundState">On</b></span>
+      </div>
+    </div>
+
+    <div class="grid">
+      <section class="card">
+        <div id="setupPanel">
+          <div class="rules">
+            Enter player names, one per line.
+            <ul>
+              <li>No 1s: add both dice to this turn's running total.</li>
+              <li>One 1: turn total resets to 0 and the turn ends.</li>
+              <li>Double 1s: <b>snake eyes</b> — player loses all points and turn ends.</li>
+              <li>Hold to bank the turn total.</li>
+              <li>First player to 100 or more wins.</li>
+            </ul>
+          </div>
+          <div style="height:10px"></div>
+          <textarea id="namesInput">Player 1
+Player 2</textarea>
+          <div class="row" style="margin-top:10px">
+            <button class="primary" id="startBtn" type="button">Start Game</button>
+            <button id="resetBtn" type="button">Reset</button>
+            <button id="soundBtn" type="button">Toggle Sound</button>
+          </div>
+        </div>
+
+        <div id="playPanel" style="display:none">
+          <div class="hud">
+            <span class="pill">Current: <b id="currentPlayerName">—</b></span>
+            <span class="pill">Turn total: <b id="turnTotal">0</b></span>
+          </div>
+
+          <div class="scene">
+            <div class="die-wrap"><div class="die2d v1" id="die1"></div></div>
+            <div class="die-wrap"><div class="die2d v1" id="die2"></div></div>
+          </div>
+
+          <div class="status" id="statusBox">Roll to begin.</div>
+
+          <div class="row" style="margin-top:12px">
+            <button class="primary" id="rollBtn" type="button">Roll</button>
+            <button class="good" id="holdBtn" type="button" disabled>Hold</button>
+            <button id="newGameBtn" type="button">New Game</button>
+            <button id="soundBtn2" type="button">Toggle Sound</button>
+          </div>
+        </div>
+      </section>
+
+      <aside class="card">
+        <h2 style="margin:0 0 10px;font-size:16px">Players</h2>
+        <div class="players" id="playersList"></div>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      const TARGET = 100;
+      let players = [];
+      let currentIndex = 0;
+      let turnTotal = 0;
+      let gameOver = false;
+      let soundEnabled = true;
+      let isRolling = false;
+
+      const setupPanel = document.getElementById('setupPanel');
+      const playPanel = document.getElementById('playPanel');
+      const namesInput = document.getElementById('namesInput');
+
+      const startBtn = document.getElementById('startBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      const newGameBtn = document.getElementById('newGameBtn');
+      const rollBtn = document.getElementById('rollBtn');
+      const holdBtn = document.getElementById('holdBtn');
+      const soundBtn = document.getElementById('soundBtn');
+      const soundBtn2 = document.getElementById('soundBtn2');
+
+      const currentPlayerName = document.getElementById('currentPlayerName');
+      const turnTotalEl = document.getElementById('turnTotal');
+      const statusBox = document.getElementById('statusBox');
+      const playersList = document.getElementById('playersList');
+      const snakeFlash = document.getElementById('snakeFlash');
+      const soundState = document.getElementById('soundState');
+
+      const die1 = document.getElementById('die1');
+      const die2 = document.getElementById('die2');
+
+      function createDieMarkup() {
+        return `
+          <span class="pip p1"></span><span class="pip p2"></span><span class="pip p3"></span>
+          <span class="pip p4"></span><span class="pip p5"></span><span class="pip p6"></span>
+          <span class="pip p7"></span><span class="pip p8"></span><span class="pip p9"></span>
+        `;
+      }
+      die1.innerHTML = createDieMarkup();
+      die2.innerHTML = createDieMarkup();
+
+      function setDieFace(el, value) {
+        const wasRolling = el.classList.contains('rolling');
+        el.className = 'die2d v' + value;
+        if (wasRolling) el.classList.add('rolling');
+        el.dataset.value = value;
+      }
+
+      function sanitizeNames(raw) {
+        return raw
+          .split(/\r?\n/)
+          .map(s => s.trim())
+          .filter(Boolean);
+      }
+
+      function setStatus(html) {
+        statusBox.innerHTML = html;
+      }
+
+      function updateSoundLabel() {
+        soundState.textContent = soundEnabled ? 'On' : 'Off';
+      }
+
+      function renderPlayers() {
+        playersList.innerHTML = '';
+        players.forEach((p, idx) => {
+          const div = document.createElement('div');
+          div.className = 'player' + ((idx === currentIndex && !gameOver) ? ' active' : '');
+          div.innerHTML = `
+            <div>
+              <b>${escapeHtml(p.name)}</b>
+              <div class="small">${idx === currentIndex && !gameOver ? 'Current turn' : p.score >= TARGET ? 'Winner' : 'Waiting'}</div>
+            </div>
+            <div class="score">${p.score}</div>
+          `;
+          playersList.appendChild(div);
+        });
+      }
+
+      function escapeHtml(str) {
+        return str.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      }
+
+      function updateHeader() {
+        currentPlayerName.textContent = players[currentIndex]?.name || '—';
+        turnTotalEl.textContent = String(turnTotal);
+      }
+
+      function enableActions() {
+        rollBtn.disabled = gameOver || isRolling;
+        holdBtn.disabled = gameOver || isRolling || turnTotal === 0;
+      }
+
+      function nextTurn() {
+        turnTotal = 0;
+        currentIndex = (currentIndex + 1) % players.length;
+        updateHeader();
+        renderPlayers();
+        enableActions();
+      }
+
+      function checkWin() {
+        const p = players[currentIndex];
+        if (p.score >= TARGET) {
+          gameOver = true;
+          setStatus(`<span class="ok">Game over.</span> <b>${escapeHtml(p.name)}</b> wins with <b>${p.score}</b> points.`);
+          renderPlayers();
+          enableActions();
+          playWinSound();
+          return true;
+        }
+        return false;
+      }
+
+      function startGame(withSamePlayers = false) {
+        gameOver = false;
+        turnTotal = 0;
+        currentIndex = 0;
+        if (!withSamePlayers) {
+          const names = sanitizeNames(namesInput.value);
+          if (names.length < 1) {
+            setStatus('<span class="bad">Please enter at least one player name.</span>');
+            return;
+          }
+          players = names.map(n => ({ name: n, score: 0 }));
+        } else {
+          players = players.map(p => ({ name: p.name, score: 0 }));
+        }
+        setupPanel.style.display = 'none';
+        playPanel.style.display = 'block';
+        setDieFace(die1, 1);
+        setDieFace(die2, 1);
+        updateHeader();
+        renderPlayers();
+        enableActions();
+        setStatus('Roll to begin.');
+      }
+
+      function resetToSetup() {
+        gameOver = false;
+        players = [];
+        currentIndex = 0;
+        turnTotal = 0;
+        isRolling = false;
+        playPanel.style.display = 'none';
+        setupPanel.style.display = 'block';
+        playersList.innerHTML = '';
+        die1.className = 'die2d v1';
+        die2.className = 'die2d v1';
+        updateSoundLabel();
+      }
+
+      function randDie() {
+        return Math.floor(Math.random() * 6) + 1;
+      }
+
+      function triggerSnakeFlash() {
+        snakeFlash.classList.remove('show');
+        void snakeFlash.offsetWidth;
+        snakeFlash.classList.add('show');
+        setTimeout(() => snakeFlash.classList.remove('show'), 1200);
+      }
+
+      let audioCtx = null;
+
+      function ensureAudio() {
+        if (!soundEnabled) return null;
+        if (!audioCtx) {
+          const Ctx = window.AudioContext || window.webkitAudioContext;
+          if (!Ctx) return null;
+          audioCtx = new Ctx();
+        }
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        return audioCtx;
+      }
+
+      function tone(freq, duration, type = 'sine', volume = 0.03, when = 0) {
+        const ctx = ensureAudio();
+        if (!ctx) return;
+        const start = ctx.currentTime + when;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, start);
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.exponentialRampToValueAtTime(volume, start + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(start);
+        osc.stop(start + duration + 0.02);
+      }
+
+      function noiseBurst(duration = 0.08, volume = 0.025, when = 0) {
+        const ctx = ensureAudio();
+        if (!ctx) return;
+        const bufferSize = Math.max(1, Math.floor(ctx.sampleRate * duration));
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.value = 850;
+        const gain = ctx.createGain();
+        const start = ctx.currentTime + when;
+        gain.gain.setValueAtTime(volume, start);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+        source.connect(filter);
+        filter.connect(gain);
+        gain.connect(ctx.destination);
+        source.start(start);
+        source.stop(start + duration);
+      }
+
+      function playRollSound() {
+        if (!soundEnabled) return;
+        for (let i = 0; i < 7; i++) {
+          noiseBurst(0.05, 0.018, i * 0.085);
+          tone(140 + Math.random() * 90, 0.045, 'triangle', 0.01, i * 0.085);
+        }
+      }
+
+      function playHoldSound() {
+        tone(440, 0.09, 'triangle', 0.03, 0);
+        tone(660, 0.12, 'triangle', 0.028, 0.08);
+      }
+
+      function playBadSound() {
+        tone(180, 0.16, 'sawtooth', 0.035, 0);
+        tone(120, 0.24, 'sawtooth', 0.03, 0.10);
+      }
+
+      function playSnakeEyesSound() {
+        tone(240, 0.12, 'square', 0.035, 0);
+        tone(170, 0.14, 'square', 0.035, 0.10);
+        tone(110, 0.28, 'sawtooth', 0.040, 0.20);
+        noiseBurst(0.18, 0.03, 0.06);
+      }
+
+      function playWinSound() {
+        tone(523.25, 0.12, 'triangle', 0.03, 0);
+        tone(659.25, 0.12, 'triangle', 0.03, 0.12);
+        tone(783.99, 0.18, 'triangle', 0.03, 0.24);
+        tone(1046.5, 0.26, 'triangle', 0.035, 0.42);
+      }
+
+      function animateRoll(final1, final2, onDone) {
+        isRolling = true;
+        enableActions();
+
+        die1.classList.add('rolling');
+        die2.classList.add('rolling');
+        playRollSound();
+
+        const flickers = 9;
+        let count = 0;
+        const iv = setInterval(() => {
+          setDieFace(die1, randDie());
+          setDieFace(die2, randDie());
+          count++;
+          if (count >= flickers) clearInterval(iv);
+        }, 85);
+
+        setTimeout(() => {
+          die1.classList.remove('rolling');
+          die2.classList.remove('rolling');
+          setDieFace(die1, final1);
+          setDieFace(die2, final2);
+          isRolling = false;
+          enableActions();
+          onDone();
+        }, 850);
+      }
+
+      function roll() {
+        if (gameOver || isRolling) return;
+        const d1 = randDie();
+        const d2 = randDie();
+
+        animateRoll(d1, d2, () => {
+          const p = players[currentIndex];
+
+          if (d1 === 1 && d2 === 1) {
+            p.score = 0;
+            turnTotal = 0;
+            setStatus(`<span class="bad">SNAKE EYES!</span> <b>${escapeHtml(p.name)}</b> loses all points. Turn over.`);
+            triggerSnakeFlash();
+            playSnakeEyesSound();
+            updateHeader();
+            renderPlayers();
+            enableActions();
+            setTimeout(nextTurn, 900);
+            return;
+          }
+
+          if (d1 === 1 || d2 === 1) {
+            turnTotal = 0;
+            setStatus(`<span class="warn">Rolled a 1.</span> Turn total resets to <b>0</b>. Turn over.`);
+            playBadSound();
+            updateHeader();
+            renderPlayers();
+            enableActions();
+            setTimeout(nextTurn, 750);
+            return;
+          }
+
+          const sum = d1 + d2;
+          turnTotal += sum;
+          setStatus(`<span class="ok">Safe roll.</span> Added <b>${sum}</b>. Turn total is now <b>${turnTotal}</b>. Roll again or hold.`);
+          updateHeader();
+          renderPlayers();
+          enableActions();
+        });
+      }
+
+      function hold() {
+        if (gameOver || isRolling || turnTotal <= 0) return;
+        const p = players[currentIndex];
+        p.score += turnTotal;
+        setStatus(`<span class="ok">Held.</span> Added <b>${turnTotal}</b> to <b>${escapeHtml(p.name)}</b>. New score: <b>${p.score}</b>.`);
+        playHoldSound();
+        turnTotal = 0;
+        updateHeader();
+        renderPlayers();
+        if (checkWin()) return;
+        enableActions();
+        setTimeout(nextTurn, 650);
+      }
+
+      function toggleSound() {
+        soundEnabled = !soundEnabled;
+        updateSoundLabel();
+      }
+
+      startBtn.addEventListener('click', () => startGame(false));
+      resetBtn.addEventListener('click', resetToSetup);
+      newGameBtn.addEventListener('click', () => startGame(true));
+      rollBtn.addEventListener('click', roll);
+      holdBtn.addEventListener('click', hold);
+      soundBtn.addEventListener('click', toggleSound);
+      soundBtn2.addEventListener('click', toggleSound);
+
+      ['touchstart','click'].forEach(evt => {
+        window.addEventListener(evt, () => { ensureAudio(); }, { once: true, passive: true });
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (playPanel.style.display === 'none') return;
+        if ((e.key === 'r' || e.key === 'R') && !rollBtn.disabled) roll();
+        if ((e.key === 'h' || e.key === 'H') && !holdBtn.disabled) hold();
+      });
+
+      updateSoundLabel();
+      setDieFace(die1, 1);
+      setDieFace(die2, 1);
+    })();
+  </script>
+</body>
+</html>
